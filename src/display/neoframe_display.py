@@ -117,14 +117,16 @@ def decode_frame(data, width, height):
     return image.convert("RGB")
 
 
-def render_preview(data):
+VALID_PANEL_ROTATIONS = (90, 270)
+
+
+def render_preview(data, rotation=90):
     """Packed bytes reconstructed as the mounted panel will display them.
 
-    The panel is native 1200x1600; the enclosure mounts it rotated 90 deg
-    clockwise, so undo that (rotate 90 deg CW here) to show the upright,
-    landscape result a viewer would see on the physical frame.
+    Inverse of the `rotation`-degree counter-clockwise pre-rotation
+    NeoFrameDisplay.display_image() applies before packing.
     """
-    return decode_frame(data, 1200, 1600).rotate(-90, expand=True)
+    return decode_frame(data, 1200, 1600).rotate(-rotation, expand=True)
 
 
 class NeoFrameDisplay(AbstractDisplay):
@@ -138,11 +140,22 @@ class NeoFrameDisplay(AbstractDisplay):
         temporary = None
         try:
             with self.lock:
-                if image.size != (1200, 1600):
+                if image.size != (1600, 1200):
                     raise ValueError(
-                        f"Expected final 1200x1600 frame, got {image.size}"
+                        f"Expected final 1600x1200 frame, got {image.size}"
                     )
-                packed = encode_frame(image)
+                rotation = self.device_config.get_config("panel_rotation", 90)
+                if rotation not in VALID_PANEL_ROTATIONS:
+                    raise ValueError(
+                        f"panel_rotation must be one of {VALID_PANEL_ROTATIONS}, got {rotation!r}"
+                    )
+                # The panel's native raster is fixed at 1200x1600 (firmware has no
+                # rotation of its own), so only a 90/270 pre-rotation of our fixed
+                # 1600x1200 composition produces a matching shape; 0/180 cannot.
+                # `rotation` is the panel's clockwise mounting angle in its
+                # enclosure; PIL's positive (counter-clockwise) rotate by that same
+                # value is the compensating transform that lands content upright.
+                packed = encode_frame(image.rotate(rotation, expand=True))
                 try:
                     if self.path.read_bytes() == packed:
                         return

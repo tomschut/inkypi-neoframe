@@ -23,8 +23,9 @@ def current_frame():
     except FileNotFoundError:
         return jsonify(error="Frame not found"), 404
     if "preview" in request.args:
+        rotation = current_app.config["DEVICE_CONFIG"].get_config("panel_rotation", 90)
         buffer = BytesIO()
-        render_preview(payload).save(buffer, "PNG")
+        render_preview(payload, rotation).save(buffer, "PNG")
         return Response(buffer.getvalue(), mimetype="image/png")
     response = Response(payload, mimetype="application/octet-stream")
     response.last_modified = stamp

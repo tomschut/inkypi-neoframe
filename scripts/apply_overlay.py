@@ -27,6 +27,39 @@ changes = {
             "app.register_blueprint(main_bp)\napp.register_blueprint(frame_bp)",
         ),
     ],
+    "src/blueprints/settings.py": [
+        (
+            '        if "inky_saturation" in form_data:\n'
+            '            settings["image_settings"]["inky_saturation"] = float(form_data.get("inky_saturation", "0.5"))\n'
+            "        device_config.update_config(settings)",
+            '        if "inky_saturation" in form_data:\n'
+            '            settings["image_settings"]["inky_saturation"] = float(form_data.get("inky_saturation", "0.5"))\n'
+            '        if "panelRotation" in form_data:\n'
+            '            settings["panel_rotation"] = int(form_data.get("panelRotation"))\n'
+            "        device_config.update_config(settings)",
+        ),
+    ],
+    "src/templates/settings.html": [
+        (
+            '                        <input type="checkbox" id="invertImage" name="invertImage" {% if device_settings.inverted_image %}checked{% endif %}>\n'
+            "                        </label>\n"
+            "                    </div>\n"
+            "                </div>\n",
+            '                        <input type="checkbox" id="invertImage" name="invertImage" {% if device_settings.inverted_image %}checked{% endif %}>\n'
+            "                        </label>\n"
+            "                    </div>\n"
+            "                </div>\n"
+            '                {% if device_settings.display_type == "neoframe" %}\n'
+            '                <div class="form-group nowrap">\n'
+            '                    <label for="panelRotation" class="form-label">Panel Rotation:</label>\n'
+            '                    <select id="panelRotation" name="panelRotation" class="form-input">\n'
+            '                        <option value="90" {% if device_settings.panel_rotation == 90 %}selected{% endif %}>90&deg; clockwise</option>\n'
+            '                        <option value="270" {% if device_settings.panel_rotation == 270 %}selected{% endif %}>90&deg; counter-clockwise</option>\n'
+            "                    </select>\n"
+            "                </div>\n"
+            "                {% endif %}\n",
+        ),
+    ],
 }
 prepared = {}
 for name, replacements in changes.items():

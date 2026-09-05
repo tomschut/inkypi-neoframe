@@ -84,7 +84,10 @@ def test_palette_order():
 
 @pytest.fixture
 def setup(tmp_path):
-    config = SimpleNamespace(current_image_file=str(tmp_path / "current_image.png"))
+    config = SimpleNamespace(
+        current_image_file=str(tmp_path / "current_image.png"),
+        get_config=lambda key, default=None: default,
+    )
     display = backend.NeoFrameDisplay(config)
     app = Flask(__name__)
     app.config["DEVICE_CONFIG"] = config
@@ -98,7 +101,7 @@ def test_publication_and_http(setup, monkeypatch):
     payload = b"\x12" * 960000
     monkeypatch.setattr(backend, "encode_frame", lambda image: payload)
     monkeypatch.setattr(backend.time, "time", lambda: 1700000000)
-    image = Image.new("RGB", (1200, 1600))
+    image = Image.new("RGB", (1600, 1200))
     display.display_image(image)
     first = client.get("/api/current_frame")
     assert first.status_code == 200 and first.data == payload
@@ -173,18 +176,18 @@ def test_decode_frame_round_trip():
 
 def test_preview_query_param(setup):
     display, client = setup
-    image = Image.new("RGB", (1200, 1600), "white")
-    image.paste("black", (0, 0, 1200, 800))
+    image = Image.new("RGB", (1600, 1200), "white")
+    image.paste("black", (0, 0, 800, 1200))
     display.display_image(image)
     preview = client.get("/api/current_frame?preview")
     assert preview.status_code == 200 and preview.mimetype == "image/png"
     rendered = Image.open(BytesIO(preview.data))
     assert rendered.size == (1600, 1200)
-    # display_image() packs the already-native-oriented image as-is (no
-    # rotation, matching NeoFrameDisplay), so the preview's un-rotate must
-    # recover it: native top half (black) becomes the rendered right half.
-    assert rendered.getpixel((1599, 0)) == (0, 0, 0)
-    assert rendered.getpixel((0, 0)) == (255, 255, 255)
+    # display_image() and the preview route both default to panel_rotation 90
+    # (the same fixture config), so packing then un-rotating is a round trip:
+    # the preview should reproduce exactly what was sent (no quantization
+    # error for pure palette colors), regardless of the rotation's direction.
+    assert rendered.convert("RGB").tobytes() == image.tobytes()
     assert client.get("/api/current_frame").mimetype == "application/octet-stream"
 
 
@@ -213,9 +216,9 @@ from blueprints.main import main_bp
 from blueprints.frame import frame_bp
 class Config:
     current_image_file=str(Path('src/static/images/current_image.png').resolve())
-    def get_resolution(self): return (1200,1600)
+    def get_resolution(self): return (1600,1200)
     def get_config(self,key,default=None):
-        return {'display_type':'neoframe','orientation':'vertical','inverted_image':True,'image_settings':{}}.get(key,default)
+        return {'display_type':'neoframe','orientation':'horizontal','inverted_image':False,'panel_rotation':90,'image_settings':{}}.get(key,default)
 c=Config()
 Path(c.current_image_file).parent.mkdir(parents=True,exist_ok=True)
 m=DisplayManager(c)
@@ -224,12 +227,12 @@ img.paste('black',(0,0,800,1200))
 m.display_image(img)
 assert Image.open(c.current_image_file).tobytes()==img.tobytes()
 bin=Path(c.current_image_file).with_name('current_frame.bin').read_bytes()
-# Left/right halves land as top/bottom halves once packed: the panel is native
-# 1200x1600 and mounted rotated 90 deg clockwise, so device.json declares
-# resolution [1200,1600] with orientation "vertical" and inverted_image true,
-# letting InkyPi's own orientation handling rotate content 270 deg (90+180)
-# before it reaches NeoFrameDisplay, instead of a custom rotate in our code.
-assert len(bin)==960000 and bin[0]==0x00 and bin[479999]==0x00 and bin[480000]==0x11 and bin[959999]==0x11
+# ../neoframe's firmware always expects its fixed native 1200x1600 raster (no
+# header, no rotation of its own), so NeoFrameDisplay itself rotates the plain
+# 1600x1200 composition by panel_rotation degrees (here 90) before packing.
+# Left/right halves land as bottom/top: native row 0 (bin[0:600]) comes from
+# the composition's right (white) edge, native row 1599 from its left (black).
+assert len(bin)==960000 and bin[0]==0x11 and bin[479999]==0x11 and bin[480000]==0x00 and bin[959999]==0x00
 app=Flask(__name__)
 app.config['DEVICE_CONFIG']=c
 app.register_blueprint(main_bp)
