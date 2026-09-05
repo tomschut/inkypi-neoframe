@@ -8,7 +8,7 @@ curl -f http://localhost:8084/api/current_frame -o current_frame.bin
 ```
 
 Firmware image_url: `http://<inkypi-host>:8084/api/current_frame`.
-The original `/api/current_image` PNG route is unchanged. The frame endpoint returns 404 before a successful render and 960000 packed bytes afterwards. Identical packed output preserves mtime and ETag; changed output is atomically replaced. Conditional requests support both If-Modified-Since and If-None-Match. Failures are logged and preserve the last successful frame.
+The original `/api/current_image` PNG route is unchanged. The frame endpoint returns 404 before a successful render and 960000 packed bytes afterwards. Identical packed output preserves mtime and ETag; changed output is atomically replaced. Conditional requests support both If-Modified-Since and If-None-Match. Failures are logged and preserve the last successful frame. Visit `http://<inkypi-host>:8084/api/current_frame?preview` in a browser to view the packed bytes decoded back into a PNG, oriented as the mounted panel will display them (not raw pixel-for-pixel bytes — no caching headers).
 
 The Docker build clones pinned upstream InkyPi, copies the added modules, and applies two checked registration edits. It never changes content plugins or the PNG handler. Override `INKYPI_REF` at build time to upgrade; incompatible registration seams fail the build. This avoids shipping stale full replacements for upstream files. `src/display/abstract_display.py` is a copy for standalone development only and is not overlaid.
 

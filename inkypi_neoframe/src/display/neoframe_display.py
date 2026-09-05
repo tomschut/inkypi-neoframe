@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 from functools import lru_cache
+from PIL import Image
 from display.abstract_display import AbstractDisplay
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,34 @@ def encode_frame(image):
                         min(255, max(0, data[target + c] + error[c] * weight / 16))
                     )
     return bytes(result)
+
+
+_PALETTE_INDEX = {code: i for i, code in enumerate(CODES)}
+_HI_NIBBLE_INDEX = bytes(_PALETTE_INDEX.get(b >> 4, 0) for b in range(256))
+_LO_NIBBLE_INDEX = bytes(_PALETTE_INDEX.get(b & 15, 0) for b in range(256))
+
+
+def decode_frame(data, width, height):
+    """Inverse of encode_frame: reconstruct an RGB image from packed nibbles."""
+    expected = width * height // 2
+    if len(data) != expected:
+        raise ValueError(f"Expected {expected} bytes for {width}x{height}, got {len(data)}")
+    indices = bytearray(width * height)
+    indices[0::2] = data.translate(_HI_NIBBLE_INDEX)
+    indices[1::2] = data.translate(_LO_NIBBLE_INDEX)
+    image = Image.frombytes("P", (width, height), bytes(indices))
+    image.putpalette([channel for rgb in PALETTE for channel in rgb])
+    return image.convert("RGB")
+
+
+def render_preview(data):
+    """Packed bytes reconstructed as the mounted panel will display them.
+
+    The panel is native 1200x1600; the enclosure mounts it rotated 90 deg
+    clockwise, so undo that (rotate 90 deg CW here) to show the upright,
+    landscape result a viewer would see on the physical frame.
+    """
+    return decode_frame(data, 1200, 1600).rotate(-90, expand=True)
 
 
 class NeoFrameDisplay(AbstractDisplay):

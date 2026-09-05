@@ -1,4 +1,5 @@
 import hashlib
+from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -158,6 +159,33 @@ def test_publication_and_http(setup, monkeypatch):
     assert not list(display.path.parent.glob(".frame-*"))
     display.display_image(Image.new("RGB", (8, 8)))
     assert display.path.read_bytes() == previous
+
+
+def test_decode_frame_round_trip():
+    image = Image.new("RGB", (1200, 1600), "white")
+    image.paste("black", (0, 0, 1200, 800))
+    decoded = backend.decode_frame(backend.encode_frame(image), 1200, 1600)
+    assert decoded.getpixel((0, 0)) == (0, 0, 0)
+    assert decoded.getpixel((0, 1599)) == (255, 255, 255)
+    with pytest.raises(ValueError):
+        backend.decode_frame(b"\x00" * 10, 1200, 1600)
+
+
+def test_preview_query_param(setup):
+    display, client = setup
+    image = Image.new("RGB", (1200, 1600), "white")
+    image.paste("black", (0, 0, 1200, 800))
+    display.display_image(image)
+    preview = client.get("/api/current_frame?preview")
+    assert preview.status_code == 200 and preview.mimetype == "image/png"
+    rendered = Image.open(BytesIO(preview.data))
+    assert rendered.size == (1600, 1200)
+    # display_image() packs the already-native-oriented image as-is (no
+    # rotation, matching NeoFrameDisplay), so the preview's un-rotate must
+    # recover it: native top half (black) becomes the rendered right half.
+    assert rendered.getpixel((1599, 0)) == (0, 0, 0)
+    assert rendered.getpixel((0, 0)) == (255, 255, 255)
+    assert client.get("/api/current_frame").mimetype == "application/octet-stream"
 
 
 def test_overlay_and_actual_manager(tmp_path):
