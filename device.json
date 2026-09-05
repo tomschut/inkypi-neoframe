@@ -2,11 +2,11 @@
   "name": "InkyPi NeoFrame",
   "display_type": "neoframe",
   "resolution": [
-    1600,
-    1200
+    1200,
+    1600
   ],
-  "orientation": "horizontal",
-  "inverted_image": false,
+  "orientation": "vertical",
+  "inverted_image": true,
   "scheduler_sleep_time": 60,
   "startup": true
 }

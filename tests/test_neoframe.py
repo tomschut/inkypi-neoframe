@@ -97,7 +97,7 @@ def test_publication_and_http(setup, monkeypatch):
     payload = b"\x12" * 960000
     monkeypatch.setattr(backend, "encode_frame", lambda image: payload)
     monkeypatch.setattr(backend.time, "time", lambda: 1700000000)
-    image = Image.new("RGB", (1600, 1200))
+    image = Image.new("RGB", (1200, 1600))
     display.display_image(image)
     first = client.get("/api/current_frame")
     assert first.status_code == 200 and first.data == payload
@@ -185,9 +185,9 @@ from blueprints.main import main_bp
 from blueprints.frame import frame_bp
 class Config:
     current_image_file=str(Path('src/static/images/current_image.png').resolve())
-    def get_resolution(self): return (1600,1200)
+    def get_resolution(self): return (1200,1600)
     def get_config(self,key,default=None):
-        return {'display_type':'neoframe','orientation':'horizontal','inverted_image':True,'image_settings':{}}.get(key,default)
+        return {'display_type':'neoframe','orientation':'vertical','inverted_image':True,'image_settings':{}}.get(key,default)
 c=Config()
 Path(c.current_image_file).parent.mkdir(parents=True,exist_ok=True)
 m=DisplayManager(c)
@@ -196,7 +196,12 @@ img.paste('black',(0,0,800,1200))
 m.display_image(img)
 assert Image.open(c.current_image_file).tobytes()==img.tobytes()
 bin=Path(c.current_image_file).with_name('current_frame.bin').read_bytes()
-assert len(bin)==960000 and bin[0]==0x11 and bin[799]==0x00
+# Left/right halves land as top/bottom halves once packed: the panel is native
+# 1200x1600 and mounted rotated 90 deg clockwise, so device.json declares
+# resolution [1200,1600] with orientation "vertical" and inverted_image true,
+# letting InkyPi's own orientation handling rotate content 270 deg (90+180)
+# before it reaches NeoFrameDisplay, instead of a custom rotate in our code.
+assert len(bin)==960000 and bin[0]==0x00 and bin[479999]==0x00 and bin[480000]==0x11 and bin[959999]==0x11
 app=Flask(__name__)
 app.config['DEVICE_CONFIG']=c
 app.register_blueprint(main_bp)

@@ -109,9 +109,9 @@ class NeoFrameDisplay(AbstractDisplay):
         temporary = None
         try:
             with self.lock:
-                if image.size != (1600, 1200):
+                if image.size != (1200, 1600):
                     raise ValueError(
-                        f"Expected final 1600x1200 frame, got {image.size}"
+                        f"Expected final 1200x1600 frame, got {image.size}"
                     )
                 packed = encode_frame(image)
                 try:

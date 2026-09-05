@@ -12,7 +12,9 @@ The original `/api/current_image` PNG route is unchanged. The frame endpoint ret
 
 The Docker build clones pinned upstream InkyPi, copies the added modules, and applies two checked registration edits. It never changes content plugins or the PNG handler. Override `INKYPI_REF` at build time to upgrade; incompatible registration seams fail the build. This avoids shipping stale full replacements for upstream files. `src/display/abstract_display.py` is a copy for standalone development only and is not overlaid.
 
-Configuration and images persist in Compose named volumes. On an existing installation, update its persisted device.json to display_type `neoframe` and resolution `[1600,1200]`; an existing volume takes precedence over image defaults. Set orientation `horizontal` for the native frame. Upstream enhancements and inversion run before packing. Python's reference-faithful dithering can take several seconds per frame.
+Configuration and images persist in Compose named volumes. On an existing installation, update its persisted device.json to display_type `neoframe` and resolution `[1200,1600]`; an existing volume takes precedence over image defaults. Set orientation `vertical` and `inverted_image` true for the native frame. Upstream enhancements and inversion run before packing. Python's reference-faithful dithering can take several seconds per frame.
+
+The panel is native 1200×1600 (GD's `EPD_WIDTH`/`EPD_HEIGHT`), matching the `../neoframe` P0 firmware's `nf_row_offset` layout (600-byte/1200-pixel rows × 1600 rows, split 300/300 between its two controllers). It is mounted rotated 90° clockwise inside the NeoFrame enclosure, so `device.json` uses InkyPi's own `orientation`/`inverted_image` handling (rather than a custom rotate in `neoframe_display.py`) to rotate composed content 270° before it reaches the packer: `orientation: vertical` rotates 90° pre-resize, `inverted_image: true` adds another 180° post-resize. This is unrelated to the stock-format comparison below, which targets a different device's convention.
 
 ## Verification
 
