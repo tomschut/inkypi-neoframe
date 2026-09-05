@@ -46,4 +46,4 @@ See REFERENCES.md for format provenance and VALIDATION.md for results and enviro
 
 ## Home Assistant OS
 
-The self-contained add-on is in `inkypi_neoframe/`. Install the archive `dist/inkypi-neoframe-haos.tar.gz` using the instructions in `inkypi_neoframe/DOCS.md`. Run `python3 scripts/package_addon.py` after changing the backend to synchronize the add-on build context and regenerate the archive. Currently supports amd64 HAOS.
+This repository is itself a Home Assistant add-on repository (`repository.yaml`), with the self-contained add-on in `inkypi_neoframe/`. In Home Assistant, add `https://github.com/tomschut/inkypi-neoframe` under **Settings → Add-ons → Add-on store → ⋮ → Repositories**, then install **InkyPi NeoFrame** from the store. See `inkypi_neoframe/DOCS.md` for full steps, including an offline fallback. Run `python3 scripts/package_addon.py` after changing the backend to keep `inkypi_neoframe/` in sync (also regenerates `dist/inkypi-neoframe-haos.tar.gz` for the offline install path). Currently supports amd64 HAOS.
